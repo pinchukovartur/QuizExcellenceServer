@@ -1,2 +1,4 @@
 .idea
 core/__pycache__
+prestige/__pycache__
+prestige/migrations/__pycache__
