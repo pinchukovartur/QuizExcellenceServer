@@ -3,7 +3,7 @@ from django.utils import timezone
 
 
 class Prestige(models.Model):
-    game_state_id = models.CharField(primary_key=True, max_length=30)
+    game_state_id = models.CharField(primary_key=True, max_length=60)
     name = models.CharField(max_length=200)
     prestige = models.IntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
