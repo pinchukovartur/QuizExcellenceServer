@@ -12,4 +12,5 @@ urlpatterns = [
     path('save/', prestige.views.save, name="save"),
     path('save_prestige_quiz_word', quiz_word.views.save, name="save"),
     path('prestige/', prestige.views.get_leader_board, name="get_leader_board"),
+    path('prestige_quiz_word/', quiz_word.views.get_leader_board, name="get_leader_board"),
 ]
