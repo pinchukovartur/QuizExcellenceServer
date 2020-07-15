@@ -15,6 +15,7 @@ def save(request):
     try:
         pr = Prestige.objects.get(pk=game_state_id)
         pr.prestige = prestige
+        pr.name = name
         pr.save()
     except ObjectDoesNotExist:
         Prestige.objects.create(game_state_id=game_state_id, prestige=prestige, name=name)
