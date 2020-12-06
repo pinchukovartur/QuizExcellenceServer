@@ -8,7 +8,9 @@ import json
 
 
 def clear_all_empty(request):
-    Prestige.objects.filter(prestige=0).delete()
+    delatable_objects = Prestige.objects.filter(prestige=0)[:1000]
+    for m in delatable_objects:
+        m.delete()
     return HttpResponse("ok")
 
 

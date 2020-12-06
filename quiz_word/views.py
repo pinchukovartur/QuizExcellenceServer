@@ -5,7 +5,10 @@ import json
 
 
 def clear_empty(request):
-    QuizWordPrestige.objects.filter(prestige=0).delete()
+    delatable_objects = QuizWordPrestige.objects.filter(prestige=0)[:1000]
+    for m in delatable_objects:
+        m.delete()
+
     return HttpResponse("ok")
 
 def save(request):
