@@ -4,6 +4,10 @@ from quiz_word.models import QuizWordPrestige
 import json
 
 
+def clear_empty(request):
+    QuizWordPrestige.objects.filter(prestige=0).delete()
+    return HttpResponse("ok")
+
 def save(request):
     game_state_id = request.GET["game_state_id"]
     prestige = request.GET["prestige"]

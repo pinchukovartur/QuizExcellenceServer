@@ -7,6 +7,11 @@ from django.db import models
 import json
 
 
+def clear_all_empty(request):
+    Prestige.objects.filter(prestige=0).delete()
+    return HttpResponse("ok")
+
+
 def save(request):
     game_state_id = request.GET["game_state_id"]
     prestige = request.GET["prestige"]
