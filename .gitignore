@@ -7,3 +7,6 @@ answer_counter/migrations/
 quiz_word/__pycache__/
 quiz_word/migrations/
 prestige/migrations/
+likes/__init__.py
+likes/__pycache__/
+likes/migrations/

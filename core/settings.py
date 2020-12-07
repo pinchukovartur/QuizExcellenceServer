@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'prestige',
     'answer_counter',
+    'likes',
     'quiz_word',
 ]
 
