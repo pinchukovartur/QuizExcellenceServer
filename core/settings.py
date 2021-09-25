@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'prestige',
     'answer_counter',
     'likes',
+    'state',
     'quiz_word',
 ]
 

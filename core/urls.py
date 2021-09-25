@@ -5,6 +5,7 @@ import prestige.views
 import quiz_word.views
 import answer_counter.views
 import likes.views
+import state.views
 
 from core import views
 
@@ -25,4 +26,7 @@ urlpatterns = [
 
     path('save_likes/', likes.views.save, name="save_likes"),
     path('get_likes/', likes.views.get_counter, name="get_likes"),
+
+    path('state_update/', state.views.update, name="state_update"),
+    path('get_best_state/', state.views.get_best_state, name="get_best_state"),
 ]
