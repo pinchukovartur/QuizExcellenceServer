@@ -21,14 +21,6 @@ def _get_current_state(state_id, name):
     return state
 
 
-def _get_current_state_by_device_id(device_id):
-    states = States.objects.filter(device_id=device_id).all()
-    if len(states) > 0:
-        return states[0]
-    else:
-        return None
-
-
 @csrf_exempt
 def update(request):
     secret_key = request.POST["secret_key"]
@@ -54,6 +46,7 @@ def update(request):
 
     return HttpResponse(json.dumps({"ok": "complete save"}))
 
+
 @csrf_exempt
 def get_best_state(request):
     secret_key = request.POST["secret_key"]
@@ -65,8 +58,9 @@ def get_best_state(request):
     if secret_key != "9012qw9012":
         return
 
-    state = _get_current_state_by_device_id(device_id)
-    if state and int_prestige >= state.prestige.prestige:
-        return HttpResponse(json.dumps({"result": "Not found best state!"}))
+    state = States.objects.filter(device_id=device_id).first()
+    if state and int_prestige <= state.prestige.prestige:
+        return HttpResponse(json.dumps({"is_find": "true", "state": state.state_data}))
 
-    return HttpResponse(json.dumps({"is_find": "true", "state": state.state_data}))
+    return HttpResponse(json.dumps({"result": "Not found best state!"}))
+
