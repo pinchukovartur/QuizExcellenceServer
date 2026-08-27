@@ -17,18 +17,42 @@ def clear_all_empty(request):
     return HttpResponse("ok - " + str(delatable_objects.count()))
 
 
+def _row(number, prestige):
+    """Одна строка лидерборда. Собирается только здесь, чтобы новые поля
+    не приходилось добавлять в каждый сборщик по отдельности."""
+    return {"number": number, "prestige": prestige.prestige, "name": prestige.name,
+            "id": prestige.game_state_id, "avatar": prestige.avatar}
+
+
+def _requested_avatar(request):
+    """Номер иконки из запроса. Старые версии клиента его не присылают —
+    для них возвращаем None, чтобы не затирать уже сохранённое значение."""
+    raw = request.GET.get("avatar")
+    if raw is None or raw == "":
+        return None
+
+    try:
+        return int(raw)
+    except ValueError:
+        return None
+
+
 def save(request):
     game_state_id = request.GET["game_state_id"]
     prestige = request.GET["prestige"]
     name = request.GET["name"]
+    avatar = _requested_avatar(request)
 
     try:
         pr = Prestige.objects.get(pk=game_state_id)
         pr.prestige = prestige
         pr.name = name
+        if avatar is not None:
+            pr.avatar = avatar
         pr.save()
     except ObjectDoesNotExist:
-        Prestige.objects.create(game_state_id=game_state_id, prestige=prestige, name=name)
+        Prestige.objects.create(game_state_id=game_state_id, prestige=prestige, name=name,
+                                avatar=-1 if avatar is None else avatar)
 
     return HttpResponse("ok")
 
@@ -57,7 +81,7 @@ def _get_top(top_count):
     #print("TOP")
     for pr in top_prestige:
         #print(num, pr.game_state_id, pr.created_at)
-        top_prestige_list.append({"number": num, "prestige": pr.prestige, "name": pr.name, "id": pr.game_state_id})
+        top_prestige_list.append(_row(num, pr))
         num = num + 1
     return top_prestige_list
 
@@ -75,8 +99,7 @@ def _get_current_prestige(game_state_id, user_name):
 
     current_num = count_user_quelas_prestige + count_user_max_prestige + 1
 
-    result = {"number": current_num, "prestige": current_prestige.prestige, "name": current_prestige.name,
-              "id": current_prestige.game_state_id}
+    result = _row(current_num, current_prestige)
     #print("Current")
     #print(current_num, current_prestige.game_state_id, current_prestige.created_at)
     return current_prestige, current_num, result
@@ -91,14 +114,14 @@ def _get_max(max_count, current_prestige, current_num):
     #print("MAX")
     for pr in max_prestige:
         #print(max_num, pr.game_state_id, pr.created_at)
-        max_list.append({"number": max_num, "prestige": pr.prestige, "name": pr.name, "id": pr.game_state_id})
+        max_list.append(_row(max_num, pr))
         max_num = max_num - 1
 
     if len(max_list) < max_count:
         max_prestige = Prestige.objects.filter(prestige__gt=current_prestige.prestige).order_by("prestige", "updated_at")[:max_count - len(max_list)]
         for pr in max_prestige:
             #print(max_num, pr.game_state_id, pr.created_at)
-            max_list.append({"number": max_num, "prestige": pr.prestige, "name": pr.name, "id": pr.game_state_id})
+            max_list.append(_row(max_num, pr))
             max_num = max_num - 1
 
     return max_list
@@ -115,7 +138,7 @@ def _get_min(min_count, current_prestige, current_num):
     #print("min")
     for pr in min_prestige:
         #print(min_num, pr.game_state_id, pr.created_at, pr.prestige)
-        min_list.append({"number": min_num, "prestige": pr.prestige, "name": pr.name, "id": pr.game_state_id})
+        min_list.append(_row(min_num, pr))
         min_num = min_num + 1
 
     if len(min_list) < min_num:
@@ -123,7 +146,7 @@ def _get_min(min_count, current_prestige, current_num):
                        :min_count - len(min_list)]
         for pr in min_prestige:
             #print(min_num, pr.game_state_id, pr.created_at, pr.prestige)
-            min_list.append({"number": min_num, "prestige": pr.prestige, "name": pr.name, "id": pr.game_state_id})
+            min_list.append(_row(min_num, pr))
             min_num = min_num + 1
 
     return min_list

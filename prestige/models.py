@@ -6,6 +6,9 @@ class Prestige(models.Model):
     game_state_id = models.CharField(primary_key=True, max_length=60)
     name = models.CharField(max_length=200)
     prestige = models.IntegerField()
+    # Номер иконки игрока в наборе приложения, -1 — иконка не выбрана.
+    # Старые записи остаются с -1, клиент рисует им заглушку.
+    avatar = models.IntegerField(default=-1)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
