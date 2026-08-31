@@ -1,5 +1,6 @@
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden
 from prestige.models import Prestige
 
 from django.db import models
@@ -8,13 +9,24 @@ import json
 
 
 def clear_all_empty(request):
+    """Удаление игроков с престижем не выше порога.
+
+    Запрос удаляет данные безвозвратно, поэтому требует secret_key —
+    тот же, что у state_update:
+
+        /prestige_clear_empty/?secret_key=...&prestige=0&count=1000
+    """
+    if request.GET.get("secret_key") != settings.API_SECRET_KEY:
+        return HttpResponseForbidden("forbidden")
+
     prestige = request.GET["prestige"]
     count = request.GET["count"]
     delatable_objects = Prestige.objects.filter(prestige__lte=int(prestige))[:int(count)]
-    #delatable_objects = Prestige.objects.all()
-    for m in delatable_objects:
-        m.delete()
-    return HttpResponse("ok - " + str(delatable_objects.count()))
+    # Сколько строк реально попало под условие — считаем до удаления,
+    # после него запрос вернул бы уже пустой результат.
+    doomed = list(delatable_objects.values_list("pk", flat=True))
+    Prestige.objects.filter(pk__in=doomed).delete()
+    return HttpResponse("ok - " + str(len(doomed)))
 
 
 def _row(number, prestige):

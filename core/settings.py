@@ -23,9 +23,16 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = '8(2!ig1y%(52bj7mg7_608_ww7&9(j0_nr7s1dxe(r53w6s+h8'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# С DEBUG=True любая 500-ка отдаёт наружу трейсбек с кодом и настройками,
+# включая секретные ключи. Для локальной отладки: DJANGO_DEBUG=1.
+DEBUG = os.environ.get('DJANGO_DEBUG') == '1'
 
 ALLOWED_HOSTS = ['*']
+
+# Ключ для служебных запросов: сохранение состояния и чистка таблиц.
+# Был захардкожен по месту в state/views.py — теперь одно значение
+# на весь проект, с возможностью подменить через окружение.
+API_SECRET_KEY = os.environ.get('API_SECRET_KEY', '9012qw9012')
 
 
 # Application definition

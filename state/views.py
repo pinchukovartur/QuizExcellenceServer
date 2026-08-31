@@ -1,7 +1,8 @@
 import json
 
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
 
 from state.models import States
@@ -30,8 +31,8 @@ def update(request):
     new_prestige = request.POST["new_prestige"]
     new_state = request.POST["new_state"]
 
-    if secret_key != "9012qw9012":
-        return
+    if secret_key != settings.API_SECRET_KEY:
+        return HttpResponseForbidden("forbidden")
 
     state = _get_current_state(user_id, new_name)
 
@@ -55,8 +56,8 @@ def get_best_state(request):
 
     int_prestige = int(prestige)
 
-    if secret_key != "9012qw9012":
-        return
+    if secret_key != settings.API_SECRET_KEY:
+        return HttpResponseForbidden("forbidden")
 
     state = States.objects.filter(device_id=device_id).first()
     if state and int_prestige <= state.prestige.prestige:

@@ -8,7 +8,7 @@ from likes.models import Likes
 
 
 def _get_current_quest(quest_hash):
-    # create current quest data
+    """Строка оценок для записи — создаём, если её ещё нет."""
     try:
         current_quest = Likes.objects.get(pk=quest_hash)
     except ObjectDoesNotExist:
@@ -39,8 +39,12 @@ def save(request):
 
 
 def get_counter(request):
+    # Чтение не создаёт строку: раньше каждый показанный вопрос оставлял
+    # в базе пустую запись, и таблица росла без единой оценки.
     quest_hash = request.GET["quest_hash"]
-    quest = _get_current_quest(quest_hash)
+    quest = Likes.objects.filter(pk=quest_hash).first()
+
+    if quest is None:
+        return HttpResponse(json.dumps({"likes": 0, "dislikes": 0}))
+
     return HttpResponse(json.dumps({"likes": quest.likes, "dislikes": quest.dislikes}))
-
-

@@ -8,7 +8,7 @@ from answer_counter.models import AnswerCounter
 
 
 def _get_current_quest(quest_hash):
-    # create current quest data
+    """Строка счётчика для записи — создаём, если её ещё нет."""
     try:
         current_quest = AnswerCounter.objects.get(pk=quest_hash)
     except ObjectDoesNotExist:
@@ -37,7 +37,13 @@ def save(request):
 
 
 def get_counter(request):
+    # Чтение не создаёт строку: раньше каждый показанный вопрос оставлял
+    # в базе пустую запись, и таблица росла без единого ответа.
     quest_hash = request.GET["quest_hash"]
-    quest = _get_current_quest(quest_hash)
+    quest = AnswerCounter.objects.filter(pk=quest_hash).first()
+
+    if quest is None:
+        return HttpResponse(json.dumps({1: 0, 2: 0, 3: 0, 4: 0}))
+
     return HttpResponse(json.dumps({1: quest.first_answer, 2: quest.second_answer,
                                     3: quest.third_answer, 4: quest.four_answer}))
