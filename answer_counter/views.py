@@ -1,7 +1,8 @@
 import json
 
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import render
 
 from answer_counter.models import AnswerCounter
@@ -47,3 +48,27 @@ def get_counter(request):
 
     return HttpResponse(json.dumps({1: quest.first_answer, 2: quest.second_answer,
                                     3: quest.third_answer, 4: quest.four_answer}))
+
+
+def clear(request):
+    """Полная очистка таблицы ответов.
+
+    Хеш вопроса считается из его текста, поэтому после правки вопросов
+    старые строки остаются в базе навсегда. Здесь сносится всё — счётчики
+    наберутся заново, восстановить их нельзя, поэтому нужен secret_key:
+
+        /answer_counter_clear/?secret_key=...&confirm=1
+    """
+    if request.GET.get("secret_key") != settings.API_SECRET_KEY:
+        return HttpResponseForbidden("forbidden")
+
+    total = AnswerCounter.objects.count()
+
+    # Без confirm только показываем размер: слишком легко снести таблицу,
+    # открыв старую ссылку из истории браузера.
+    if request.GET.get("confirm") != "1":
+        return HttpResponse(json.dumps({"total": total,
+                                        "hint": "add confirm=1 to delete"}))
+
+    AnswerCounter.objects.all().delete()
+    return HttpResponse(json.dumps({"ok": "cleared", "deleted": total}))

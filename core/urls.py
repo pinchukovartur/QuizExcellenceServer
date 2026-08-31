@@ -23,9 +23,11 @@ urlpatterns = [
 
     path('answer_counter_save/', answer_counter.views.save, name="answer_counter_save"),
     path('get_quest_answers_counter/', answer_counter.views.get_counter, name="get_counter"),
+    path('answer_counter_clear/', answer_counter.views.clear, name="answer_counter_clear"),
 
     path('save_likes/', likes.views.save, name="save_likes"),
     path('get_likes/', likes.views.get_counter, name="get_likes"),
+    path('likes_clear/', likes.views.clear, name="likes_clear"),
 
     path('state_update/', state.views.update, name="state_update"),
     path('get_best_state/', state.views.get_best_state, name="get_best_state"),
