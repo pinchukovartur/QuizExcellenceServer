@@ -11,6 +11,7 @@ from core import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', views.index, name="root"),
     path('index/', views.index, name="index"),
 
     path('save/', prestige.views.save, name="save"),
