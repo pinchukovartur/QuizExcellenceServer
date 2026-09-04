@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse, HttpResponseForbidden
+from metrics.track import mark_active
 from prestige.models import Prestige
 
 from django.db import models
@@ -63,8 +64,14 @@ def save(request):
             pr.avatar = avatar
         pr.save()
     except ObjectDoesNotExist:
-        Prestige.objects.create(game_state_id=game_state_id, prestige=prestige, name=name,
-                                avatar=-1 if avatar is None else avatar)
+        pr = Prestige.objects.create(game_state_id=game_state_id, prestige=prestige, name=name,
+                                     avatar=-1 if avatar is None else avatar)
+
+    # Клиент дёргает save только при первом прохождении темы, поэтому
+    # здесь же отмечаем день активности — иначе retention не посчитать:
+    # Prestige хранит лишь последний updated_at, истории дней в нём нет.
+    # mark_active гасит свои ошибки: метрика не должна мешать сохранению.
+    mark_active(game_state_id, prestige, pr.created_at)
 
     return HttpResponse("ok")
 

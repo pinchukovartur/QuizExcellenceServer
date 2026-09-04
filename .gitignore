@@ -10,3 +10,6 @@ prestige/migrations/
 likes/__init__.py
 likes/__pycache__/
 likes/migrations/
+metrics/__pycache__/
+metrics/migrations/__pycache__/
+state/__pycache__/

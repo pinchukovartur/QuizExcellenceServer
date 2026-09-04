@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'likes',
     'state',
     'quiz_word',
+    'metrics',
 ]
 
 MIDDLEWARE = [
