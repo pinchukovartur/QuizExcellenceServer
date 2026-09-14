@@ -35,4 +35,5 @@ urlpatterns = [
 
     path('state_update/', state.views.update, name="state_update"),
     path('get_best_state/', state.views.get_best_state, name="get_best_state"),
+    path('state_delete/', state.views.delete, name="state_delete"),
 ]

@@ -49,6 +49,27 @@ def update(request):
 
 
 @csrf_exempt
+def delete(request):
+    """Убирает сохранёнку удалённого профиля.
+
+    Без этого профиль возвращался бы при следующем запуске: на сервере
+    у него остаётся прежний престиж, и get_best_state сочтёт его лучше
+    чистого локального.
+    """
+    secret_key = request.POST["secret_key"]
+    user_id = request.POST["user_id"]
+    device_id = request.POST["device_id"]
+
+    if secret_key != settings.API_SECRET_KEY:
+        return HttpResponseForbidden("forbidden")
+
+    # Сверяем устройство: чужую сохранёнку по одному лишь id удалять нельзя
+    removed, _ = States.objects.filter(pk=user_id, device_id=device_id).delete()
+
+    return HttpResponse(json.dumps({"ok": "deleted", "count": removed}))
+
+
+@csrf_exempt
 def get_best_state(request):
     secret_key = request.POST["secret_key"]
     device_id = request.POST["device_id"]
