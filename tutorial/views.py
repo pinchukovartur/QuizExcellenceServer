@@ -1,0 +1,84 @@
+import json
+
+from django.conf import settings
+from django.db.models import Count
+from django.http import HttpResponse, HttpResponseForbidden
+from django.views.decorators.csrf import csrf_exempt
+
+from tutorial.models import TutorialStep
+
+# Порядок шагов первого сеанса. Первый — сам запуск игры, дальше шаги
+# обучения; разница между соседними и есть воронка. Порядок задан
+# здесь, а не выводится из данных: шаг, который никто не прошёл, тоже
+# должен быть виден в отчёте — именно на нём игроки и отваливаются.
+STEPS = (
+    'launch',
+    'play',
+    'classes',
+    'subjects',
+    'topic',
+    'theory',
+    'boost',
+    'start',
+    'repeat',
+)
+
+
+@csrf_exempt
+def save(request):
+    """Отмечает пройденный шаг: POST на /tutorial_step/.
+
+    Клиент повторяет неудачные отправки, поэтому повторный вызов с тем
+    же шагом не ошибка и не дубль — get_or_create по паре (игрок, шаг).
+
+    Отвечает явным «ok», чтобы клиент понял, можно ли снять шаг из
+    очереди: молчаливый 200 неотличим от оборванного соединения.
+    """
+    secret_key = request.POST.get("secret_key", "")
+    if secret_key != settings.API_SECRET_KEY:
+        return HttpResponseForbidden("forbidden")
+
+    game_state_id = request.POST.get("game_state_id", "")
+    step = request.POST.get("step", "")
+    if not game_state_id or step not in STEPS:
+        return HttpResponse(json.dumps({"error": "bad request"}),
+                            status=400)
+
+    _, created = TutorialStep.objects.get_or_create(
+        game_state_id=game_state_id, step=step)
+
+    return HttpResponse(json.dumps({"ok": True, "created": created}))
+
+
+def funnel(request):
+    """Воронка обучения: /tutorial/?secret_key=...
+
+    Показывает, сколько игроков дошло до каждого шага и какая доля
+    осталась от предыдущего — так видно, на каком шаге теряем.
+    """
+    secret_key = request.GET.get("secret_key", "")
+    if secret_key != settings.API_SECRET_KEY:
+        return HttpResponseForbidden("forbidden")
+
+    counts = {r['step']: r['players'] for r in TutorialStep.objects
+              .values('step')
+              .annotate(players=Count('game_state_id', distinct=True))}
+
+    started = counts.get(STEPS[0], 0)
+    rows = []
+    previous = None
+    for step in STEPS:
+        players = counts.get(step, 0)
+        rows.append({
+            "step": step,
+            "players": players,
+            # Доля от запустивших игру и от предыдущего шага. None, а не
+            # 0: без базы процент посчитать нельзя, и ноль бы соврал.
+            "of_started": round(players * 100.0 / started, 1) if started else None,
+            "of_previous": (round(players * 100.0 / previous, 1)
+                            if previous else None),
+        })
+        previous = players
+
+    return HttpResponse(json.dumps({"steps": rows}, ensure_ascii=False),
+                        content_type="application/json")

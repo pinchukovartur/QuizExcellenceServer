@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'state',
     'quiz_word',
     'metrics',
+    'tutorial',
 ]
 
 MIDDLEWARE = [
