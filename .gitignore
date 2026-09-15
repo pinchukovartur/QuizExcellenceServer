@@ -1,15 +1,17 @@
 .idea
-core/__pycache__
-prestige/__pycache__
-prestige/migrations/__pycache__
-answer_counter/__pycache__/
-answer_counter/migrations/
-quiz_word/__pycache__/
-quiz_word/migrations/
-prestige/migrations/
-likes/__init__.py
-likes/__pycache__/
-likes/migrations/
-metrics/__pycache__/
-metrics/migrations/__pycache__/
-state/__pycache__/
+__pycache__/
+*.pyc
+
+# База данных не версионируется: она у каждого окружения своя.
+# Лежала в git с 2020 года, и 15.09.2026 git pull затёр ею боевую
+# базу на проде — данные за сентябрь были потеряны.
+db.sqlite3
+
+# Собирается на месте через collectstatic
+static/
+
+# Миграции здесь НЕ игнорируются намеренно. Раньше игнорировались
+# почти все (prestige, state, likes, quiz_word): из-за этого схема на
+# проде и в репозитории жили порознь, миграции приходилось
+# восстанавливать по памяти, а одна цепочка оказалась неприменённой
+# пять лет. Миграции — часть кода и должны ездить вместе с ним.
