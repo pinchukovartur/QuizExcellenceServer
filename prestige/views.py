@@ -30,6 +30,27 @@ def clear_all_empty(request):
     return HttpResponse("ok - " + str(len(doomed)))
 
 
+def save_avatar(request):
+    """Обновляет только иконку игрока: /save_avatar/?...
+
+    Отдельно от save намеренно: тот отмечает день активности, и вызов
+    при каждом открытии рейтинга сделал бы «активным» любого, кто
+    просто заглянул в таблицу, — retention бы поехал.
+
+    Запись не создаём: если игрока ещё нет, обновлять нечего, а
+    создание пустого Prestige исказило бы конверсию.
+    """
+    game_state_id = request.GET.get("game_state_id", "")
+    avatar = _requested_avatar(request)
+
+    if not game_state_id or avatar is None:
+        return HttpResponse(json.dumps({"error": "bad request"}), status=400)
+
+    updated = Prestige.objects.filter(pk=game_state_id).update(avatar=avatar)
+
+    return HttpResponse(json.dumps({"ok": True, "updated": updated}))
+
+
 def _row(number, prestige):
     """Одна строка лидерборда. Собирается только здесь, чтобы новые поля
     не приходилось добавлять в каждый сборщик по отдельности."""

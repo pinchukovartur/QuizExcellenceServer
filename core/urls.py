@@ -7,6 +7,7 @@ import answer_counter.views
 import likes.views
 import state.views
 import tutorial.views
+import feedback.views
 import metrics.views
 
 from core import views
@@ -37,6 +38,11 @@ urlpatterns = [
     path('state_update/', state.views.update, name="state_update"),
     path('get_best_state/', state.views.get_best_state, name="get_best_state"),
     path('state_delete/', state.views.delete, name="state_delete"),
+    path('save_avatar/', prestige.views.save_avatar, name="save_avatar"),
     path('tutorial_step/', tutorial.views.save, name="tutorial_step"),
     path('tutorial/', tutorial.views.funnel, name="tutorial_funnel"),
+    path('feedback_add/', feedback.views.add, name="feedback_add"),
+    path('feedback_delete/', feedback.views.delete, name="feedback_delete"),
+    path('feedback_done/', feedback.views.done, name="feedback_done"),
+    path('feedback/', feedback.views.items, name="feedback_items"),
 ]
