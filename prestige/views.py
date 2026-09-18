@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse, HttpResponseForbidden
+from django.utils import timezone
 from metrics.track import mark_active
 from prestige.models import Prestige
 
@@ -135,15 +136,33 @@ def get_leader_board(request):
         return HttpResponse("error")
 
     current_prestige, current_num, result["current"] = _get_current_prestige(game_state_id, user_name)
-    result["top"] = _get_top(5)
     result["max"] = _get_max(2, current_prestige, current_num)
     result["min"] = _get_min(2, current_prestige, current_num)
+
+    # Топ добираем до полной таблицы: у лидера соседей сверху нет, и
+    # с фиксированными пятью строками он видел вдвое короче список,
+    # чем игрок из середины.
+    top_count = 5 + (2 - len(result["max"])) + (2 - len(result["min"]))
+    result["top"] = _get_top(top_count)
     return HttpResponse(json.dumps(result))
 
 
+def _scored():
+    """Игроки, прошедшие хотя бы одну тему.
+
+    Нули в таблицу не попадают: раньше запись заводилась при первом же
+    открытии рейтинга, и половина базы — это зашедшие, но не игравшие.
+    Свой нулевой игрок всё равно видит себя — последней строкой.
+    """
+    return Prestige.objects.filter(prestige__gt=0)
+
+
 def _get_top(top_count):
-    # create top 5 prestige data
-    top_prestige = Prestige.objects.order_by('-prestige', "-updated_at")[:top_count]
+    # Нулевой престиж в таблицу не берём: это либо следы прежнего
+    # поведения, когда запись заводилась при заходе в рейтинг, либо
+    # игрок, не прошедший ни одной темы. Показывать чужие нули незачем —
+    # свой игрок видит только себя последним.
+    top_prestige = _scored().order_by('-prestige', "-updated_at")[:top_count]
     num = 1
     top_prestige_list = list()
     #print("TOP")
@@ -156,14 +175,29 @@ def _get_top(top_count):
 
 def _get_current_prestige(game_state_id, user_name):
     # create current user data
+    is_new = False
     try:
         current_prestige = Prestige.objects.get(pk=game_state_id)
     except ObjectDoesNotExist:
-        current_prestige = Prestige.objects.create(game_state_id=game_state_id, prestige=0, name=user_name)
+        # Запись не создаём: игрок мог просто заглянуть в таблицу, не
+        # пройдя ни одной темы. Прежде такой заход клал в базу строку
+        # с нулём — отсюда мёртвые записи, а метрика активности
+        # считала зашедшего игравшим. Строка собирается в памяти:
+        # себя игрок видит, в базу это не попадает.
+        is_new = True
+        current_prestige = Prestige(game_state_id=game_state_id, prestige=0, name=user_name,
+                                    created_at=timezone.now())
 
-    count_user_max_prestige = Prestige.objects.filter(prestige__gt=current_prestige.prestige).count()
-    count_user_quelas_prestige = Prestige.objects.filter(prestige=current_prestige.prestige,
-                                                         created_at__gt=current_prestige.created_at).count()
+    count_user_max_prestige = _scored().filter(prestige__gt=current_prestige.prestige).count()
+    if is_new:
+        # Ещё не играл — встаёт сразу за последним, у кого есть хотя бы
+        # очко. Нули в таблице выше него не поднимаются: это следы
+        # прежнего поведения, когда запись заводилась при одном заходе
+        # в рейтинг, а не за игру.
+        count_user_quelas_prestige = 0
+    else:
+        count_user_quelas_prestige = _scored().filter(prestige=current_prestige.prestige,
+                                                      created_at__gt=current_prestige.created_at).count()
 
     current_num = count_user_quelas_prestige + count_user_max_prestige + 1
 
@@ -178,7 +212,8 @@ def _get_max(max_count, current_prestige, current_num):
     max_list = list()
     max_num = current_num - 1
 
-    max_prestige = Prestige.objects.filter(prestige=current_prestige.prestige, created_at__gt=current_prestige.created_at).order_by("updated_at")[:max_count]
+    max_prestige = _scored().filter(prestige=current_prestige.prestige,
+                                    created_at__gt=current_prestige.created_at).order_by("updated_at")[:max_count]
     #print("MAX")
     for pr in max_prestige:
         #print(max_num, pr.game_state_id, pr.created_at)
@@ -186,7 +221,7 @@ def _get_max(max_count, current_prestige, current_num):
         max_num = max_num - 1
 
     if len(max_list) < max_count:
-        max_prestige = Prestige.objects.filter(prestige__gt=current_prestige.prestige).order_by("prestige", "updated_at")[:max_count - len(max_list)]
+        max_prestige = _scored().filter(prestige__gt=current_prestige.prestige).order_by("prestige", "updated_at")[:max_count - len(max_list)]
         for pr in max_prestige:
             #print(max_num, pr.game_state_id, pr.created_at)
             max_list.append(_row(max_num, pr))
@@ -200,8 +235,8 @@ def _get_min(min_count, current_prestige, current_num):
     min_list = list()
     min_num = current_num + 1
 
-    min_prestige = Prestige.objects.filter(prestige=current_prestige.prestige,
-                                           created_at__lt=current_prestige.created_at).order_by("-updated_at")[
+    min_prestige = _scored().filter(prestige=current_prestige.prestige,
+                                    created_at__lt=current_prestige.created_at).order_by("-updated_at")[
                    :min_count]
     #print("min")
     for pr in min_prestige:
@@ -209,8 +244,11 @@ def _get_min(min_count, current_prestige, current_num):
         min_list.append(_row(min_num, pr))
         min_num = min_num + 1
 
-    if len(min_list) < min_num:
-        min_prestige = Prestige.objects.filter(prestige__lt=current_prestige.prestige).order_by("-prestige", "-updated_at")[
+    # Сравниваем с нужным количеством, а не с позицией в таблице:
+    # min_num — это номер строки, и у игрока из середины он всегда
+    # больше len(min_list), поэтому добор срабатывал вхолостую.
+    if len(min_list) < min_count:
+        min_prestige = _scored().filter(prestige__lt=current_prestige.prestige).order_by("-prestige", "-updated_at")[
                        :min_count - len(min_list)]
         for pr in min_prestige:
             #print(min_num, pr.game_state_id, pr.created_at, pr.prestige)
