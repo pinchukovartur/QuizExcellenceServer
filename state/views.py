@@ -69,6 +69,38 @@ def delete(request):
     return HttpResponse(json.dumps({"ok": "deleted", "count": removed}))
 
 
+def find(request):
+    """Ищет сохранёнки по нику: /state_find/?secret_key=...&name=...
+
+    Нужна поддержке: игрок пишет в отзыв ник, а device_id и
+    game_state_id знает только его устройство. Без этого найти
+    человека, который просит помощи, нечем.
+
+    Отдаёт метаданные, но не сам state_data: он большой, а для
+    опознания хватает престижа и дат.
+    """
+    if request.GET.get("secret_key") != settings.API_SECRET_KEY:
+        return HttpResponseForbidden("forbidden")
+
+    name = request.GET.get("name", "").strip()
+    if not name:
+        return HttpResponse(json.dumps({"error": "bad request"}), status=400)
+
+    rows = States.objects.filter(name__icontains=name)[:20]
+
+    return HttpResponse(json.dumps({
+        "items": [{
+            "game_state_id": r.game_state_id,
+            "device_id": r.device_id,
+            "name": r.name,
+            "prestige": r.prestige.prestige,
+            "state_size": len(r.state_data or ""),
+            "created_at": r.created_at.isoformat(),
+            "updated_at": r.updated_at.isoformat(),
+        } for r in rows],
+    }, ensure_ascii=False), content_type="application/json")
+
+
 @csrf_exempt
 def get_best_state(request):
     secret_key = request.POST["secret_key"]

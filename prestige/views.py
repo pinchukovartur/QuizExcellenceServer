@@ -30,6 +30,20 @@ def clear_all_empty(request):
     return HttpResponse("ok - " + str(len(doomed)))
 
 
+def _requested_avatar_url(request):
+    """Ссылка на аватарку из аккаунта. Старые клиенты её не присылают —
+    тогда None, и сохранённое значение остаётся нетронутым.
+
+    Пустая строка приходит осознанно: игрок вышел из аккаунта, ссылку
+    надо очистить.
+    """
+    raw = request.GET.get("avatar_url")
+    if raw is None:
+        return None
+
+    return raw[:500]
+
+
 def save_avatar(request):
     """Обновляет только иконку игрока: /save_avatar/?...
 
@@ -42,11 +56,20 @@ def save_avatar(request):
     """
     game_state_id = request.GET.get("game_state_id", "")
     avatar = _requested_avatar(request)
+    avatar_url = _requested_avatar_url(request)
 
-    if not game_state_id or avatar is None:
+    # Поля независимы: игрок мог поменять только иконку из набора или
+    # только войти в аккаунт. Присланное обновляем, остальное не трогаем.
+    fields = {}
+    if avatar is not None:
+        fields["avatar"] = avatar
+    if avatar_url is not None:
+        fields["avatar_url"] = avatar_url
+
+    if not game_state_id or not fields:
         return HttpResponse(json.dumps({"error": "bad request"}), status=400)
 
-    updated = Prestige.objects.filter(pk=game_state_id).update(avatar=avatar)
+    updated = Prestige.objects.filter(pk=game_state_id).update(**fields)
 
     return HttpResponse(json.dumps({"ok": True, "updated": updated}))
 
@@ -55,7 +78,8 @@ def _row(number, prestige):
     """Одна строка лидерборда. Собирается только здесь, чтобы новые поля
     не приходилось добавлять в каждый сборщик по отдельности."""
     return {"number": number, "prestige": prestige.prestige, "name": prestige.name,
-            "id": prestige.game_state_id, "avatar": prestige.avatar}
+            "id": prestige.game_state_id, "avatar": prestige.avatar,
+            "avatar_url": prestige.avatar_url}
 
 
 def _requested_avatar(request):
@@ -76,6 +100,7 @@ def save(request):
     prestige = request.GET["prestige"]
     name = request.GET["name"]
     avatar = _requested_avatar(request)
+    avatar_url = _requested_avatar_url(request)
 
     try:
         pr = Prestige.objects.get(pk=game_state_id)
@@ -83,10 +108,13 @@ def save(request):
         pr.name = name
         if avatar is not None:
             pr.avatar = avatar
+        if avatar_url is not None:
+            pr.avatar_url = avatar_url
         pr.save()
     except ObjectDoesNotExist:
         pr = Prestige.objects.create(game_state_id=game_state_id, prestige=prestige, name=name,
-                                     avatar=-1 if avatar is None else avatar)
+                                     avatar=-1 if avatar is None else avatar,
+                                     avatar_url=avatar_url or "")
 
     # Клиент дёргает save только при первом прохождении темы, поэтому
     # здесь же отмечаем день активности — иначе retention не посчитать:

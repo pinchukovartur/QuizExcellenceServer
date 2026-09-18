@@ -38,6 +38,7 @@ urlpatterns = [
     path('state_update/', state.views.update, name="state_update"),
     path('get_best_state/', state.views.get_best_state, name="get_best_state"),
     path('state_delete/', state.views.delete, name="state_delete"),
+    path('state_find/', state.views.find, name="state_find"),
     path('save_avatar/', prestige.views.save_avatar, name="save_avatar"),
     path('tutorial_step/', tutorial.views.save, name="tutorial_step"),
     path('tutorial/', tutorial.views.funnel, name="tutorial_funnel"),
