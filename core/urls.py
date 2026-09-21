@@ -10,6 +10,7 @@ import tutorial.views
 import feedback.views
 import metrics.views
 import tournament.views
+import purchase.views
 
 from core import views
 
@@ -52,4 +53,6 @@ urlpatterns = [
     path('tournament_join/', tournament.views.join, name="tournament_join"),
     path('tournament_score/', tournament.views.add_score, name="tournament_score"),
     path('tournament_board/', tournament.views.board, name="tournament_board"),
+
+    path('purchase_verify/', purchase.views.verify, name="purchase_verify"),
 ]

@@ -53,7 +53,16 @@ INSTALLED_APPS = [
     'tutorial',
     'feedback',
     'tournament',
+    'purchase',
 ]
+
+# Ключ сервисного аккаунта для проверки покупок в Google Play.
+# Файл кладётся на сервер отдельно и в репозиторий не попадает: это
+# доступ к Play Console, а не настройка. Пусто — проверка покупок
+# отвечает, что подтвердить нечем, и товар не выдаётся.
+GOOGLE_SERVICE_ACCOUNT_FILE = os.environ.get(
+    "GOOGLE_SERVICE_ACCOUNT_FILE", ""
+)
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
