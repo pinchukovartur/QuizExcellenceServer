@@ -25,6 +25,6 @@ class Migration(migrations.Migration):
         migrations.AddIndex(
             model_name="purchase",
             index=models.Index(fields=["game_state_id"],
-                               name="purchase_pu_game_st_7a3e21_idx"),
+                               name="purchase_pu_game_st_d6d046_idx"),
         ),
     ]

@@ -57,7 +57,7 @@ class Migration(migrations.Migration):
         migrations.AddIndex(
             model_name="member",
             index=models.Index(fields=["game_state_id"],
-                               name="tournament__game_st_0c1d4e_idx"),
+                               name="tournament__game_st_d65f14_idx"),
         ),
         migrations.AlterUniqueTogether(
             name="member",
