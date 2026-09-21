@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'metrics',
     'tutorial',
     'feedback',
+    'tournament',
 ]
 
 MIDDLEWARE = [
