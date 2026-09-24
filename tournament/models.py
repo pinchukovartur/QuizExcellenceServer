@@ -3,18 +3,31 @@ from django.utils import timezone
 
 
 class Season(models.Model):
-    """Событие: две недели, внутри — комнаты по 15 игроков.
+    """Запуск события: сроки задаются руками в админке.
 
     Сезон общий для всех: начинается и заканчивается у всех в одно
     время, чтобы событие можно было анонсировать. Комнаты только делят
     участников, своих сроков у них нет.
+
+    Автоматически сезоны больше не создаются. Нет заведённого запуска
+    или все закончились — турнира нет, и окно честно говорит, что
+    следующий будет позже. Событие, которое идёт всегда, перестаёт
+    быть событием.
     """
+
+    #: Название для админки: «Осенний турнир», «Запуск 1». Игроку не
+    #: показывается — он видит только сроки и таблицу.
+    title = models.CharField(max_length=100, default="", blank=True)
 
     started_at = models.DateTimeField(default=timezone.now)
     finished_at = models.DateTimeField()
 
+    class Meta:
+        ordering = ["-started_at"]
+
     def __str__(self):
-        return f"season {self.pk} до {self.finished_at:%d.%m}"
+        name = self.title or f"запуск {self.pk}"
+        return f"{name}: {self.started_at:%d.%m} — {self.finished_at:%d.%m}"
 
 
 class Room(models.Model):

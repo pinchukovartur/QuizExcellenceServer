@@ -13,9 +13,6 @@ from tournament.models import Member, Room, Season
 # Сколько игроков помещается в комнату
 ROOM_SIZE = 15
 
-# Сколько длится сезон
-SEASON_DAYS = 14
-
 # За сколько до конца закрываем вход: попасть в событие, где остался
 # день, — значит заведомо проиграть, и новичок решит, что турниры не
 # для него.
@@ -28,26 +25,47 @@ def _forbidden(request):
 
 
 def _actual_season():
-    """Текущий сезон. Закончился или его нет — заводим следующий.
+    """Идущий сейчас запуск или None, если турнира нет.
 
-    Расписание не храним: сезон начинается тогда, когда в игру зашёл
-    первый игрок после конца предыдущего. Для события на две недели
-    этого достаточно, а планировщика на хостинге нет.
+    Запуски заводятся руками в админке: у каждого свои даты начала и
+    конца. Сам сервер их не создаёт — событие, которое идёт всегда,
+    перестаёт быть событием, и анонсировать его нечем.
+
+    Берём тот, что начался и ещё не кончился. Если запуски случайно
+    перекрылись, выигрывает начавшийся позже: он свежее.
     """
     now = timezone.now()
-    season = Season.objects.filter(finished_at__gt=now).order_by("-pk").first()
-    if season is not None:
-        return season
 
-    return Season.objects.create(
-        started_at=now,
-        finished_at=now + timedelta(days=SEASON_DAYS),
-    )
+    return (Season.objects
+            .filter(started_at__lte=now, finished_at__gt=now)
+            .order_by("-started_at")
+            .first())
+
+
+def _next_season():
+    """Ближайший запуск, который ещё не начался. Нужен окну, чтобы
+    сказать, когда ждать следующий турнир."""
+    return (Season.objects
+            .filter(started_at__gt=timezone.now())
+            .order_by("started_at")
+            .first())
 
 
 def _open_for_join(season):
     """Можно ли ещё войти: за два дня до конца вход закрыт."""
     return timezone.now() + CLOSED_BEFORE_END <= season.finished_at
+
+
+def _no_season_json():
+    """Ответ, когда турнира нет. Клиент по нему показывает, когда
+    ждать следующий, и не предлагает участвовать."""
+    upcoming = _next_season()
+
+    return {
+        "ok": True,
+        "no_season": True,
+        "next_at": upcoming.started_at.isoformat() if upcoming else "",
+    }
 
 
 def _season_json(season, room=None):
@@ -79,6 +97,8 @@ def join(request):
         return HttpResponse(json.dumps({"error": "bad request"}), status=400)
 
     season = _actual_season()
+    if season is None:
+        return HttpResponse(json.dumps(_no_season_json()))
 
     existing = Member.objects.filter(
         room__season=season, game_state_id=game_state_id
@@ -158,6 +178,11 @@ def add_score(request):
         return HttpResponse(json.dumps({"error": "bad request"}), status=400)
 
     season = _actual_season()
+    if season is None:
+        # Турнира нет — очки девать некуда. Клиенту отвечаем так же,
+        # как на «игрок не в комнате»: очередь не копится вечно.
+        return HttpResponse(json.dumps({"ok": False, "not_joined": True}))
+
     member = Member.objects.filter(
         room__season=season, game_state_id=game_state_id
     ).first()
@@ -184,6 +209,9 @@ def board(request):
         return HttpResponse(json.dumps({"error": "bad request"}), status=400)
 
     season = _actual_season()
+    if season is None:
+        return HttpResponse(json.dumps(_no_season_json()))
+
     member = Member.objects.filter(
         room__season=season, game_state_id=game_state_id
     ).first()
@@ -226,6 +254,8 @@ def status(request):
         return HttpResponseForbidden("forbidden")
 
     season = _actual_season()
+    if season is None:
+        return HttpResponse(json.dumps(_no_season_json()))
 
     return HttpResponse(json.dumps({
         "ok": True,
