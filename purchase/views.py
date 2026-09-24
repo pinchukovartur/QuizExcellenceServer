@@ -67,10 +67,17 @@ def _ask_google(product_id, token):
         return None
 
     import urllib.error
+    import urllib.parse
     import urllib.request
 
+    # Подставляемое экранируем: настоящий токен Google состоит из
+    # латиницы и цифр, но присланное клиентом может быть любым, а
+    # нелатинский символ в адресе роняет запрос UnicodeEncodeError
+    # ещё до отправки.
     url = VERIFY_URL.format(
-        package=PACKAGE_NAME, product=product_id, token=token
+        package=PACKAGE_NAME,
+        product=urllib.parse.quote(product_id, safe=""),
+        token=urllib.parse.quote(token, safe=""),
     )
     request = urllib.request.Request(
         url, headers={"Authorization": f"Bearer {access_token}"}
