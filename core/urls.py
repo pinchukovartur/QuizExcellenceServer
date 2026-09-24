@@ -53,6 +53,7 @@ urlpatterns = [
     path('tournament_join/', tournament.views.join, name="tournament_join"),
     path('tournament_score/', tournament.views.add_score, name="tournament_score"),
     path('tournament_board/', tournament.views.board, name="tournament_board"),
+    path('tournament_reward/', tournament.views.reward, name="tournament_reward"),
 
     path('purchase_verify/', purchase.views.verify, name="purchase_verify"),
 ]

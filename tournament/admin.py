@@ -47,7 +47,14 @@ class RoomAdmin(admin.ModelAdmin):
 
 @admin.register(Member)
 class MemberAdmin(admin.ModelAdmin):
-    list_display = ("name", "score", "room", "updated_at")
-    list_filter = ("room__season",)
+    list_display = ("name", "score", "reward", "room", "updated_at")
+    list_filter = ("room__season", "rewarded_place")
     search_fields = ("name", "game_state_id")
     ordering = ("-score",)
+
+    @admin.display(description="Награда")
+    def reward(self, member):
+        if not member.rewarded_place:
+            return "—"
+
+        return f"забрал за {member.rewarded_place} место"

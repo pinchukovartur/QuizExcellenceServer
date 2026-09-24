@@ -61,6 +61,14 @@ class Member(models.Model):
     name = models.CharField(max_length=200, default="")
     avatar = models.IntegerField(default=-1)
     score = models.IntegerField(default=0)
+
+    #: Место, за которое игрок забрал награду. 0 — не забирал.
+    #:
+    #: Награду начисляет клиент по итоговой таблице, но отметку он
+    #: присылает сюда: иначе не видно, кто получил приз, а игрок,
+    #: переустановивший игру, мог бы забрать его второй раз.
+    rewarded_place = models.IntegerField(default=0)
+
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

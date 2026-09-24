@@ -195,6 +195,49 @@ def add_score(request):
     return HttpResponse(json.dumps({"ok": True, "score": member.score}))
 
 
+@csrf_exempt
+def reward(request):
+    """Отмечает выданную награду: POST на /tournament_reward/.
+
+    Начисляет награду клиент — он знает и правила, и инвентарь. Сюда
+    присылает только факт: кто и за какое место приз забрал. Без этого
+    в админке не видно, кому награда досталась, а игрок,
+    переустановивший игру, мог бы получить её второй раз.
+
+    Уже отмеченного второй раз не записываем и отвечаем, что награда
+    выдана: клиенту этого достаточно, чтобы не начислять повторно.
+    """
+    if _forbidden(request):
+        return HttpResponseForbidden("forbidden")
+
+    game_state_id = request.POST.get("game_state_id", "")
+    try:
+        place = int(request.POST.get("place", "0"))
+    except ValueError:
+        place = 0
+
+    if not game_state_id or place <= 0:
+        return HttpResponse(json.dumps({"error": "bad request"}), status=400)
+
+    # Ищем по всем сезонам, а не только по идущему: награда забирается
+    # после окончания запуска, когда сезон уже не актуален
+    member = (Member.objects
+              .filter(game_state_id=game_state_id)
+              .order_by("-room__season__started_at")
+              .first())
+    if member is None:
+        return HttpResponse(json.dumps({"ok": False, "not_joined": True}))
+
+    if member.rewarded_place:
+        return HttpResponse(json.dumps({
+            "ok": True, "already": True, "place": member.rewarded_place,
+        }))
+
+    Member.objects.filter(pk=member.pk).update(rewarded_place=place)
+
+    return HttpResponse(json.dumps({"ok": True, "place": place}))
+
+
 def board(request):
     """Таблица комнаты: /tournament_board/?game_state_id=...
 
@@ -235,6 +278,9 @@ def board(request):
             "name": row.name,
             "avatar": row.avatar,
             "score": row.score,
+            # Ноль — награду не забирал. Клиент по этому полю не
+            # начисляет приз второй раз после переустановки.
+            "rewarded_place": row.rewarded_place,
         })
 
     return HttpResponse(json.dumps({
