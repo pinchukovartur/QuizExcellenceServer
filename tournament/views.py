@@ -13,6 +13,11 @@ from tournament.models import Member, Room, Season
 # Сколько игроков помещается в комнату
 ROOM_SIZE = 15
 
+# Сколько мест получают награду. Должно совпадать с клиентом
+# (TournamentController.prizes): расходятся — игрок увидит приз,
+# которого сервер не подтвердит.
+REWARDED_PLACES = 3
+
 # За сколько до конца закрываем вход: попасть в событие, где остался
 # день, — значит заведомо проиграть, и новичок решит, что турниры не
 # для него.
@@ -197,26 +202,26 @@ def add_score(request):
 
 @csrf_exempt
 def reward(request):
-    """Отмечает выданную награду: POST на /tournament_reward/.
+    """Разрешает награду за место: POST на /tournament_reward/.
 
-    Начисляет награду клиент — он знает и правила, и инвентарь. Сюда
-    присылает только факт: кто и за какое место приз забрал. Без этого
-    в админке не видно, кому награда досталась, а игрок,
-    переустановивший игру, мог бы получить её второй раз.
+    Начисляет приз клиент — он знает и правила, и инвентарь, — но
+    право на него подтверждает сервер. Клиенту верить нельзя ни в
+    сроках, ни в месте: часы на устройстве переводятся, а запрос
+    подделывается.
 
-    Уже отмеченного второй раз не записываем и отвечаем, что награда
-    выдана: клиенту этого достаточно, чтобы не начислять повторно.
+    Проверяем здесь два условия. Запуск должен закончиться по времени
+    сервера: иначе, переведя часы вперёд, игрок забрал бы награду в
+    первый же день. И место должно быть настоящим — считаем его сами
+    по очкам, присланное игнорируем.
+
+    Отвечаем местом, за которое награда положена. Ноль — не положена
+    вовсе, и клиент ничего не начисляет.
     """
     if _forbidden(request):
         return HttpResponseForbidden("forbidden")
 
     game_state_id = request.POST.get("game_state_id", "")
-    try:
-        place = int(request.POST.get("place", "0"))
-    except ValueError:
-        place = 0
-
-    if not game_state_id or place <= 0:
+    if not game_state_id:
         return HttpResponse(json.dumps({"error": "bad request"}), status=400)
 
     # Ищем по всем сезонам, а не только по идущему: награда забирается
@@ -233,9 +238,39 @@ def reward(request):
             "ok": True, "already": True, "place": member.rewarded_place,
         }))
 
+    season = member.room.season
+    if season.finished_at > timezone.now():
+        # Событие ещё идёт. Клиент мог решить иначе, если на устройстве
+        # переведены часы, — но время здесь считает сервер.
+        return HttpResponse(json.dumps({
+            "ok": True, "place": 0, "not_finished": True,
+        }))
+
+    place = _place_of(member)
+    if place > REWARDED_PLACES:
+        # Место не призовое: отмечаем нулём и больше не проверяем
+        return HttpResponse(json.dumps({"ok": True, "place": 0}))
+
     Member.objects.filter(pk=member.pk).update(rewarded_place=place)
 
     return HttpResponse(json.dumps({"ok": True, "place": place}))
+
+
+def _place_of(member):
+    """Настоящее место игрока в комнате — по очкам, как в таблице.
+
+    Присланному клиентом месту верить нельзя: запрос подделывается, и
+    последний в таблице попросил бы награду за первое.
+    """
+    rows = (Member.objects
+            .filter(room=member.room)
+            .order_by("-score", "updated_at"))
+
+    for number, row in enumerate(rows, start=1):
+        if row.pk == member.pk:
+            return number
+
+    return 0
 
 
 def board(request):
