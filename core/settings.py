@@ -58,11 +58,35 @@ INSTALLED_APPS = [
 
 # Ключ сервисного аккаунта для проверки покупок в Google Play.
 # Файл кладётся на сервер отдельно и в репозиторий не попадает: это
-# доступ к Play Console, а не настройка. Пусто — проверка покупок
+# доступ к Play Console, а не настройка. Не найден — проверка покупок
 # отвечает, что подтвердить нечем, и товар не выдаётся.
-GOOGLE_SERVICE_ACCOUNT_FILE = os.environ.get(
-    "GOOGLE_SERVICE_ACCOUNT_FILE", ""
-)
+#
+# Путь берём из переменной окружения, а если её нет — ищем ключ рядом
+# с проектом сами. Переменная из WSGI-файла доходит не всегда, и молча
+# неработающая проверка покупок — худший вид поломки: клиент считает,
+# что сервер недоступен, и товар не выдаёт.
+def _find_service_account_file():
+    from_env = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE", "")
+    if from_env and os.path.exists(from_env):
+        return from_env
+
+    # Домашняя папка сервера: BASE_DIR — это сам проект, ключ лежит
+    # уровнем выше, вне репозитория
+    home = os.path.dirname(BASE_DIR)
+    try:
+        names = sorted(os.listdir(home))
+    except OSError:
+        return ""
+
+    # Ключ Google назван по номеру проекта: api-<цифры>-<хэш>.json
+    for name in names:
+        if name.startswith("api-") and name.endswith(".json"):
+            return os.path.join(home, name)
+
+    return ""
+
+
+GOOGLE_SERVICE_ACCOUNT_FILE = _find_service_account_file()
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
