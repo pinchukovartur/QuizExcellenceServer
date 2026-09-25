@@ -88,4 +88,11 @@ def get(request):
         # нечем, а ронять окно из-за одной строки незачем
         return HttpResponse(json.dumps({"ok": True, "found": False}))
 
+    # Даты подставляет сервер, а не клиент: часы на устройстве
+    # переводятся, и «играю с 2019 года» нарисовал бы кто угодно.
+    # Заодно их не приходится слать в каждой карточке.
+    state = profile.state
+    data["since"] = state.created_at.date().isoformat()
+    data["online"] = state.updated_at.date().isoformat()
+
     return HttpResponse(json.dumps({"ok": True, "found": True, "data": data}))
