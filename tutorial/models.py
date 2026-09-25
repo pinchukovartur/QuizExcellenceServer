@@ -26,7 +26,9 @@ class TutorialStep(models.Model):
 
     class Meta:
         unique_together = ('game_state_id', 'step')
-        indexes = [models.Index(fields=['step', 'created_at'])]
+        # Имя задаём явно — см. feedback/models.py
+        indexes = [models.Index(fields=['step', 'created_at'],
+                                name='tutorial_tu_step_idx')]
 
     def __str__(self):
         return '%s %s' % (self.game_state_id, self.step)

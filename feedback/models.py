@@ -37,7 +37,11 @@ class Feedback(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
-        indexes = [models.Index(fields=['is_done', 'created_at'])]
+        # Имя задаём явно: без него Django считает его от хеша
+        # полей и при каждой проверке предлагает переименовать
+        # индекс, заведённый первой миграцией
+        indexes = [models.Index(fields=['is_done', 'created_at'],
+                                name='feedback_fe_done_idx')]
 
     def __str__(self):
         return '%s %s' % (self.kind, self.text[:40])
