@@ -14,6 +14,7 @@ from django.views.decorators.csrf import csrf_exempt
 from config.models import get_int
 from prestige.models import Prestige
 from profile.models import Friendship, Profile
+from state.models import States
 from profile.views import _issue_code
 
 def max_friends():
@@ -66,9 +67,16 @@ def my_code(request):
         return HttpResponseForbidden("forbidden")
 
     game_state_id = request.POST.get("game_state_id", "")
-    profile = _profile_of(game_state_id)
-    if profile is None:
-        return HttpResponse(json.dumps({"error": "no profile"}), status=404)
+    if not game_state_id:
+        return HttpResponse(json.dumps({"error": "bad request"}), status=400)
+
+    # Профиль заводим сами, если его ещё нет: карточка появляется
+    # после первой темы, а код нужен раньше — иначе игрок не может
+    # назвать его другу, пока сам не поиграет.
+    if not States.objects.filter(pk=game_state_id).exists():
+        return HttpResponse(json.dumps({"error": "no state"}), status=404)
+
+    profile, _ = Profile.objects.get_or_create(state_id=game_state_id)
 
     return HttpResponse(json.dumps({"ok": True, "code": _issue_code(profile)}))
 
@@ -108,9 +116,12 @@ def add(request):
     if _forbidden(request):
         return HttpResponseForbidden("forbidden")
 
-    owner = _profile_of(request.POST.get("game_state_id", ""))
-    if owner is None:
-        return HttpResponse(json.dumps({"error": "no profile"}), status=404)
+    owner_id = request.POST.get("game_state_id", "")
+    if not States.objects.filter(pk=owner_id).exists():
+        return HttpResponse(json.dumps({"error": "no state"}), status=404)
+
+    # Как и с кодом: добавлять друзей можно до первой пройденной темы
+    owner, _ = Profile.objects.get_or_create(state_id=owner_id)
 
     raw = request.POST.get("code", "")
     if not raw.isdigit():
