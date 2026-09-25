@@ -34,6 +34,18 @@ class Profile(models.Model):
     #: ляжет всё будущее, чего мы пока не придумали.
     data = models.TextField(default="", blank=True)
 
+    #: Числовой код, по которому игрока находят друзья.
+    #:
+    #: Выдаётся один раз и закрепляется навсегда: порядковый номер в
+    #: таблице для этого не годится — он съедет, как только кто-то
+    #: удалит прогресс, и старый код приведёт к чужому человеку.
+    #:
+    #: Пусто — код ещё не выдан. Именно NULL, а не ноль: уникальность
+    #: держит база, а нулей у неё было бы столько же, сколько игроков
+    #: без кода, и второй такой уже не сохранился бы.
+    code = models.IntegerField(null=True, blank=True, unique=True,
+                               db_index=True)
+
     updated_at = models.DateTimeField(auto_now=True)
 
     @property
@@ -42,3 +54,35 @@ class Profile(models.Model):
 
     def __str__(self):
         return self.state_id
+
+
+class Friendship(models.Model):
+    """Кто у кого в друзьях.
+
+    Связь односторонняя: строка «А добавил Б» не делает А другом у Б.
+    Так проще и честнее для детской игры — подтверждать заявки ребёнок
+    не станет, а добавивший видит успехи того, за кем следит.
+
+    Взаимность видна по наличию обратной строки, и при желании её
+    можно показать значком.
+    """
+
+    #: Кто добавил
+    owner = models.ForeignKey(Profile, on_delete=models.CASCADE,
+                              related_name="friends")
+
+    #: Кого добавили
+    friend = models.ForeignKey(Profile, on_delete=models.CASCADE,
+                               related_name="friend_of")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # Одна пара — одна строка. Уникальность на уровне базы, а не
+        # проверкой в коде: два запроса подряд с плохой связью иначе
+        # завели бы дубль.
+        unique_together = ("owner", "friend")
+        indexes = [models.Index(fields=["owner", "created_at"])]
+
+    def __str__(self):
+        return "%s -> %s" % (self.owner_id, self.friend_id)

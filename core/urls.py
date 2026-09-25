@@ -12,6 +12,7 @@ import metrics.views
 import tournament.views
 import purchase.views
 import profile.views
+import profile.friends
 
 from core import views
 
@@ -63,6 +64,13 @@ urlpatterns = [
     # Карточка игрока: её показывают рейтинг, турнир и друзья
     path('profile_save/', profile.views.save, name="profile_save"),
     path('profile_get/', profile.views.get, name="profile_get"),
+
+    # Друзья: находят друг друга по коду, который называют сами
+    path('friend_code/', profile.friends.my_code, name="friend_code"),
+    path('friend_find/', profile.friends.find, name="friend_find"),
+    path('friend_add/', profile.friends.add, name="friend_add"),
+    path('friend_remove/', profile.friends.remove, name="friend_remove"),
+    path('friend_list/', profile.friends.friend_list, name="friend_list"),
 
     path('purchase_verify/', purchase.views.verify, name="purchase_verify"),
 ]

@@ -1,15 +1,53 @@
 import json
+import random
 
 from django.conf import settings
+from django.db import IntegrityError, transaction
 from django.http import HttpResponse, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
 
 from profile.models import Profile
 from state.models import States
 
+#: Границы кода игрока. Шесть цифр: диктуются голосом без ошибок и
+#: помещаются на экран целиком.
+#:
+#: Код случайный, а не по порядку: соседние номера иначе подбирались
+#: бы перебором, и ребёнку сыпались бы заявки от незнакомых людей.
+#: Миллион вариантов на тысячу игроков — попасть наугад почти нельзя.
+CODE_MIN = 100000
+CODE_MAX = 999999
+
 #: Карточка — это несколько чисел и строк. Мегабайт здесь взяться
 #: неоткуда, и такой запрос стоит отклонить, а не сохранять.
 MAX_DATA = 4000
+
+
+def _issue_code(profile):
+    """Выдаёт игроку код, если его ещё нет.
+
+    Столкновения разбирает база: поле уникально, и повтор просто
+    заставляет попробовать другое число. Проверять занятость заранее
+    смысла нет — два запроса подряд всё равно успели бы взять одно и
+    то же.
+    """
+    if profile.code:
+        return profile.code
+
+    for _ in range(10):
+        code = random.randint(CODE_MIN, CODE_MAX)
+        try:
+            with transaction.atomic():
+                profile.code = code
+                profile.save(update_fields=["code"])
+            return code
+        except IntegrityError:
+            continue
+
+    # Десять попыток подряд мимо — значит кодов почти не осталось.
+    # Лучше отдать ноль, чем крутить цикл дальше: игра покажет, что
+    # код пока недоступен.
+    return 0
 
 
 def _forbidden(request):
