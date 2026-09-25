@@ -1,5 +1,32 @@
 from django.db import models
 
+#: Порядок шагов первого сеанса. Первый — сам запуск игры, дальше шаги
+#: обучения; разница между соседними и есть воронка. Порядок задан
+#: здесь, а не выводится из данных: шаг, который никто не прошёл, тоже
+#: должен быть виден в отчёте — именно на нём игроки и отваливаются.
+#:
+#: boost и start — два состояния одного экрана подготовки: первое
+#: видит тот, кто ещё не выбрал бустер, второе — кто выбрал. Игрок
+#: проходит одно из двух.
+#:
+#: repeat идёт последним: подсказку про повторение показывают уже
+#: после пройденной темы.
+STEPS = (
+    'launch',
+    'play',
+    'classes',
+    'subjects',
+    'topic',
+    'theory',
+    'boost',
+    'start',
+    'repeat',
+)
+
+#: Шаги, которые не продолжают предыдущий, а идут ему в пару.
+#: Значение — шаг, от которого считать долю.
+BRANCHES = {'start': 'theory'}
+
 
 class TutorialStep(models.Model):
     """Счётчик игроков, дошедших до шага обучения.
@@ -26,3 +53,58 @@ class TutorialStep(models.Model):
 
     def __str__(self):
         return '%s: %s' % (self.step, self.players)
+
+    @property
+    def order(self):
+        """Место шага в воронке, считая с единицы.
+
+        Ноль — шага нет в списке: так бывает у записи, оставшейся от
+        переименованного шага.
+        """
+        return STEPS.index(self.step) + 1 if self.step in STEPS else 0
+
+    @staticmethod
+    def funnel():
+        """Воронка целиком: шаг, сколько дошло и доли.
+
+        Считается одним запросом и здесь, а не в отчёте и админке по
+        отдельности: расчёт долей с ветвлением легко разъезжается,
+        если его держать в двух местах.
+        """
+        counts = dict(TutorialStep.objects.values_list('step', 'players'))
+        started = counts.get(STEPS[0], 0)
+
+        rows = []
+        previous = None
+        for step in STEPS:
+            players = counts.get(step, 0)
+
+            # Ветвящийся шаг сравниваем с его развилкой, а не с соседом
+            # по списку: иначе доля выходит больше ста процентов
+            base = counts.get(BRANCHES[step]) if step in BRANCHES else previous
+
+            rows.append({
+                'step': step,
+                'order': STEPS.index(step) + 1,
+                'players': players,
+                # Доля от запустивших игру и от предыдущего шага. None,
+                # а не 0: без базы процент посчитать нельзя, и ноль бы
+                # соврал.
+                'of_started': (round(players * 100.0 / started, 1)
+                               if started else None),
+                'of_previous': (round(players * 100.0 / base, 1)
+                                if base else None),
+                # Сколько потеряли на этом шаге — то, ради чего воронку
+                # и смотрят. Ниже нуля не опускаем: дошедших бывает
+                # чуть больше, чем на предыдущем шаге (переустановка,
+                # пара шагов в разном порядке), и «потеряли -1» только
+                # сбивает с толку.
+                'lost': max(base - players, 0) if base else None,
+            })
+
+            # Ветка не сдвигает основную линию: следующий шаг считается
+            # от того же, от чего считалась она
+            if step not in BRANCHES:
+                previous = players
+
+        return rows
