@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.contrib import admin
 from django.utils import timezone
 
@@ -14,7 +16,7 @@ class SeasonAdmin(admin.ModelAdmin):
     """
 
     list_display = ("name", "started_at", "finished_at", "state",
-                    "rooms_count", "players_count")
+                    "join_window", "rooms_count", "players_count")
     # Ссылкой делаем и название, и дату начала: Django вешает ссылку на
     # первую колонку, а название у запуска может быть пустым — тогда
     # открыть его было нечем.
@@ -27,6 +29,18 @@ class SeasonAdmin(admin.ModelAdmin):
         # Пустое название игра заменяет словом «Турнир» — показываем
         # здесь то же самое, чтобы было видно, что увидит игрок
         return season.title or "Турнир (без названия)"
+
+    @admin.display(description="Вход")
+    def join_window(self, season):
+        days = season.closed_before_end_days or 0
+        if days <= 0:
+            return "до конца"
+
+        closes = season.finished_at - timedelta(days=days)
+        if closes <= timezone.now():
+            return "закрыт"
+
+        return "закроется %s" % closes.strftime("%d.%m %H:%M")
 
     @admin.display(description="Состояние")
     def state(self, season):

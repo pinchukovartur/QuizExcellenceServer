@@ -25,6 +25,16 @@ class Season(models.Model):
     started_at = models.DateTimeField(default=timezone.now)
     finished_at = models.DateTimeField()
 
+    #: За сколько дней до конца закрывается вход.
+    #:
+    #: Попасть в событие, где остался день, значит заведомо проиграть,
+    #: и новичок решит, что турниры не для него. Но правильное окно
+    #: зависит от длины запуска: двухнедельному нужно два дня, а
+    #: трёхдневному спринту хватит нескольких часов.
+    #:
+    #: Ноль — вход открыт до самого конца.
+    closed_before_end_days = models.IntegerField(default=2)
+
     class Meta:
         ordering = ["-started_at"]
 

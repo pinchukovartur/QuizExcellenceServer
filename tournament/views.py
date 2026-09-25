@@ -18,10 +18,9 @@ ROOM_SIZE = 15
 # которого сервер не подтвердит.
 REWARDED_PLACES = 3
 
-# За сколько до конца закрываем вход: попасть в событие, где остался
-# день, — значит заведомо проиграть, и новичок решит, что турниры не
-# для него.
-CLOSED_BEFORE_END = timedelta(days=2)
+# За сколько до конца закрываем вход по умолчанию. Запуск может
+# задать своё окно — см. Season.closed_before_end_days.
+DEFAULT_CLOSED_BEFORE_END_DAYS = 2
 
 
 def _forbidden(request):
@@ -57,8 +56,17 @@ def _next_season():
 
 
 def _open_for_join(season):
-    """Можно ли ещё войти: за два дня до конца вход закрыт."""
-    return timezone.now() + CLOSED_BEFORE_END <= season.finished_at
+    """Можно ли ещё войти.
+
+    Окно задаётся у запуска: двухнедельному турниру нужно два дня,
+    трёхдневному спринту хватит нескольких часов. Ноль — вход открыт
+    до самого конца.
+    """
+    days = season.closed_before_end_days
+    if days is None:
+        days = DEFAULT_CLOSED_BEFORE_END_DAYS
+
+    return timezone.now() + timedelta(days=days) <= season.finished_at
 
 
 def _no_season_json():
