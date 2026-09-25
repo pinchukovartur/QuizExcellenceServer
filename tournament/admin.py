@@ -13,10 +13,20 @@ class SeasonAdmin(admin.ModelAdmin):
     идёт всегда, перестаёт быть событием.
     """
 
-    list_display = ("title", "started_at", "finished_at", "state",
+    list_display = ("name", "started_at", "finished_at", "state",
                     "rooms_count", "players_count")
+    # Ссылкой делаем и название, и дату начала: Django вешает ссылку на
+    # первую колонку, а название у запуска может быть пустым — тогда
+    # открыть его было нечем.
+    list_display_links = ("name", "started_at")
     list_filter = ("started_at",)
     ordering = ("-started_at",)
+
+    @admin.display(description="Название")
+    def name(self, season):
+        # Пустое название игра заменяет словом «Турнир» — показываем
+        # здесь то же самое, чтобы было видно, что увидит игрок
+        return season.title or "Турнир (без названия)"
 
     @admin.display(description="Состояние")
     def state(self, season):
