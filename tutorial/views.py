@@ -11,6 +11,14 @@ from tutorial.models import TutorialStep
 # обучения; разница между соседними и есть воронка. Порядок задан
 # здесь, а не выводится из данных: шаг, который никто не прошёл, тоже
 # должен быть виден в отчёте — именно на нём игроки и отваливаются.
+#
+# boost и start — два состояния одного экрана подготовки: первое
+# видит тот, кто ещё не выбрал бустер, второе — кто выбрал. Игрок
+# проходит одно из двух, поэтому «доля от предыдущего» у start
+# считается не от boost, а от того же topic, что и у boost.
+#
+# repeat идёт последним: подсказку про повторение показывают уже
+# после пройденной темы.
 STEPS = (
     'launch',
     'play',
@@ -22,6 +30,10 @@ STEPS = (
     'start',
     'repeat',
 )
+
+#: Шаги, которые не продолжают предыдущий, а идут ему в пару.
+#: Значение — шаг, от которого считать долю.
+BRANCHES = {'start': 'theory'}
 
 
 @csrf_exempt
@@ -73,16 +85,25 @@ def funnel(request):
     previous = None
     for step in STEPS:
         players = counts.get(step, 0)
+
+        # Ветвящийся шаг сравниваем с его развилкой, а не с соседом по
+        # списку: иначе доля выходит больше ста процентов и отчёт врёт
+        base = counts.get(BRANCHES[step]) if step in BRANCHES else previous
+
         rows.append({
             "step": step,
             "players": players,
             # Доля от запустивших игру и от предыдущего шага. None, а не
             # 0: без базы процент посчитать нельзя, и ноль бы соврал.
             "of_started": round(players * 100.0 / started, 1) if started else None,
-            "of_previous": (round(players * 100.0 / previous, 1)
-                            if previous else None),
+            "of_previous": (round(players * 100.0 / base, 1)
+                            if base else None),
         })
-        previous = players
+
+        # Ветка не сдвигает основную линию: следующий шаг считается от
+        # того же, от чего считалась она
+        if step not in BRANCHES:
+            previous = players
 
     return HttpResponse(json.dumps({"steps": rows}, ensure_ascii=False),
                         content_type="application/json")
