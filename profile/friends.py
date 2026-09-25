@@ -14,7 +14,6 @@ from django.views.decorators.csrf import csrf_exempt
 from config.models import get_int
 from prestige.models import Prestige
 from profile.models import Friendship, Profile
-from state.models import States
 from profile.views import _issue_code
 
 def max_friends():
@@ -45,10 +44,10 @@ def _card(profile):
     Имя и престиж берём из рейтинга — отдельно их в профиле не держим,
     чтобы не расходились.
     """
-    prestige = Prestige.objects.filter(pk=profile.state_id).first()
+    prestige = Prestige.objects.filter(pk=profile.game_state_id).first()
 
     return {
-        "id": profile.state_id,
+        "id": profile.game_state_id,
         "code": profile.code or 0,
         "name": prestige.name if prestige else "",
         "prestige": prestige.prestige if prestige else 0,
@@ -70,13 +69,9 @@ def my_code(request):
     if not game_state_id:
         return HttpResponse(json.dumps({"error": "bad request"}), status=400)
 
-    # Профиль заводим сами, если его ещё нет: карточка появляется
-    # после первой темы, а код нужен раньше — иначе игрок не может
-    # назвать его другу, пока сам не поиграет.
-    if not States.objects.filter(pk=game_state_id).exists():
-        return HttpResponse(json.dumps({"error": "no state"}), status=404)
-
-    profile, _ = Profile.objects.get_or_create(state_id=game_state_id)
+    # Профиль заводим сами: код нужен с первого запуска, а сохранёнка
+    # на сервере появляется только после пройденной темы.
+    profile, _ = Profile.objects.get_or_create(pk=game_state_id)
 
     return HttpResponse(json.dumps({"ok": True, "code": _issue_code(profile)}))
 
@@ -117,11 +112,11 @@ def add(request):
         return HttpResponseForbidden("forbidden")
 
     owner_id = request.POST.get("game_state_id", "")
-    if not States.objects.filter(pk=owner_id).exists():
-        return HttpResponse(json.dumps({"error": "no state"}), status=404)
+    if not owner_id:
+        return HttpResponse(json.dumps({"error": "bad request"}), status=400)
 
     # Как и с кодом: добавлять друзей можно до первой пройденной темы
-    owner, _ = Profile.objects.get_or_create(state_id=owner_id)
+    owner, _ = Profile.objects.get_or_create(pk=owner_id)
 
     raw = request.POST.get("code", "")
     if not raw.isdigit():
@@ -131,7 +126,7 @@ def add(request):
     if friend is None:
         return HttpResponse(json.dumps({"ok": True, "found": False}))
 
-    if friend.state_id == owner.state_id:
+    if friend.game_state_id == owner.game_state_id:
         return HttpResponse(json.dumps({"ok": False, "self": True}))
 
     if owner.friends.count() >= max_friends():
@@ -166,7 +161,7 @@ def remove(request):
 
 
 def friend_list(request):
-    """Список друзей: GET /friend_list/?game_state_id=...
+    """Список друзей: GET /friend_list/?game_pk=...
 
     Отдаём с престижем и именем, чтобы рядом с каждым сразу было
     видно, как у него дела, — карточка открывается тапом, как в

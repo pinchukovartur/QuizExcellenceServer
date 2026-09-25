@@ -1,7 +1,5 @@
 from django.db import models
 
-from state.models import States
-
 
 class Profile(models.Model):
     """Карточка игрока для чужих глаз.
@@ -15,16 +13,16 @@ class Profile(models.Model):
     другим, и читается это одним запросом.
     """
 
-    #: Связь со стейтом один к одному: профиль есть только у того, кто
-    #: играет, и уходит вместе с ним. Ключ тот же game_state_id, так
-    #: что искать профиль по идентификатору игрока можно напрямую.
-    state = models.OneToOneField(
-        States,
-        on_delete=models.CASCADE,
-        primary_key=True,
-        related_name="profile",
-        db_column="game_state_id",
-    )
+    #: Идентификатор игрока — тот же, что у сохранёнки.
+    #:
+    #: Ключом, а не внешней связью: код друга и список нужны с первого
+    #: запуска, а сохранёнка на сервере появляется только после
+    #: пройденной темы. Заводить ради профиля пустой стейт нельзя —
+    #: вместе с ним пришлось бы создавать и пустой Prestige, а он
+    #: портит метрику конверсии.
+    #:
+    #: Осиротевшие профили подчищает удаление игрока: см. delete_state.
+    game_state_id = models.CharField(primary_key=True, max_length=60)
 
     #: Что показывать в карточке: пройдено тем, достижений, серия дней
     #: и что там ещё захочется.
@@ -48,12 +46,8 @@ class Profile(models.Model):
 
     updated_at = models.DateTimeField(auto_now=True)
 
-    @property
-    def game_state_id(self):
-        return self.state_id
-
     def __str__(self):
-        return self.state_id
+        return self.game_state_id
 
 
 class Friendship(models.Model):

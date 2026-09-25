@@ -5,6 +5,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
 
+from profile.models import Profile
 from state.models import States
 from prestige.models import Prestige
 
@@ -72,6 +73,12 @@ def delete(request):
 
     # Сверяем устройство: чужую сохранёнку по одному лишь id удалять нельзя
     removed, _ = States.objects.filter(pk=user_id, device_id=device_id).delete()
+
+    # Карточку и друзей уносим следом. Профиль живёт отдельной записью,
+    # а не связью со стейтом: он нужен с первого запуска, когда
+    # сохранёнки ещё нет, — поэтому и чистить его приходится вручную.
+    if removed:
+        Profile.objects.filter(pk=user_id).delete()
 
     return HttpResponse(json.dumps({"ok": "deleted", "count": removed}))
 

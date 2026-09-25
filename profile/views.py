@@ -83,14 +83,8 @@ def save(request):
         except ValueError:
             return HttpResponse(json.dumps({"error": "bad json"}), status=400)
 
-    # Профиль привязан к стейту: без сохранёнки его не создать. Такое
-    # бывает только у клиента, который прислал карточку раньше первого
-    # сохранения, — отвечаем честно, а не заводим запись-сироту.
-    if not States.objects.filter(pk=game_state_id).exists():
-        return HttpResponse(json.dumps({"error": "no state"}), status=404)
-
     Profile.objects.update_or_create(
-        state_id=game_state_id,
+        pk=game_state_id,
         defaults={"data": data},
     )
 
@@ -129,8 +123,9 @@ def get(request):
     # Даты подставляет сервер, а не клиент: часы на устройстве
     # переводятся, и «играю с 2019 года» нарисовал бы кто угодно.
     # Заодно их не приходится слать в каждой карточке.
-    state = profile.state
-    data["since"] = state.created_at.date().isoformat()
-    data["online"] = state.updated_at.date().isoformat()
+    state = States.objects.filter(pk=game_state_id).first()
+    if state is not None:
+        data["since"] = state.created_at.date().isoformat()
+        data["online"] = state.updated_at.date().isoformat()
 
     return HttpResponse(json.dumps({"ok": True, "found": True, "data": data}))
