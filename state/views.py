@@ -30,6 +30,9 @@ def update(request):
     new_name = request.POST["new_name"]
     new_prestige = request.POST["new_prestige"]
     new_state = request.POST["new_state"]
+    # Через get, а не по ключу: клиенты старых версий платформу не
+    # шлют, и обязательный параметр обрушил бы им сохранение
+    platform = request.POST.get("platform", "")
 
     if secret_key != settings.API_SECRET_KEY:
         return HttpResponseForbidden("forbidden")
@@ -43,6 +46,10 @@ def update(request):
     state.name = new_name
     state.device_id = device_id
     state.state_data = new_state
+    # Пустое значение не записываем: игрок со старой версией иначе
+    # стирал бы платформу, узнанную при прошлом сохранении
+    if platform:
+        state.platform = platform
     state.save()
 
     return HttpResponse(json.dumps({"ok": "complete save"}))
