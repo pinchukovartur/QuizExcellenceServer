@@ -44,3 +44,24 @@ def privacy(request):
         "updated": "25 сентября 2026 года",
         "email": "artur.pinchukou@redbarkgames.com",
     })
+
+
+def server_time(request):
+    """Текущее время сервера: GET /server_time/.
+
+    Нужно всему, что раздаёт награды по календарю. Часы на устройстве
+    переводятся, и по ним ежедневный бонус забирался бы сколько
+    угодно раз подряд.
+
+    Секретный ключ не спрашиваем: время не тайна, а лишняя проверка
+    только мешала бы позвать его на старте игры.
+    """
+    now = timezone.localtime()
+
+    return HttpResponse(json.dumps({
+        "ok": True,
+        "now": now.isoformat(),
+        # День числом yyyymmdd — клиент сравнивает календарные дни, и
+        # разбирать дату ради этого ему незачем
+        "day": now.year * 10000 + now.month * 100 + now.day,
+    }))
