@@ -64,19 +64,19 @@ def _next_season():
 def _open_for_join(season):
     """Можно ли ещё войти.
 
-    Окно задаётся у запуска: двухнедельному турниру нужно два дня,
-    трёхдневному спринту хватит нескольких часов. Ноль — вход открыт
-    до самого конца.
+    Окно задаётся у запуска: двухнедельному турниру нужно пару дней,
+    спринту на выходные — несколько часов. Ноль — вход открыт до
+    самого конца.
     """
-    days = season.closed_before_end_days
-    if days is None:
-        days = get_int(
-            "tournament.closed_before_end_days", 2,
-            "За сколько дней до конца закрывать вход, если у запуска "
-            "не задано своё",
+    minutes = season.closed_before_end_minutes
+    if minutes is None:
+        minutes = get_int(
+            "tournament.closed_before_end_minutes", 2 * 24 * 60,
+            "За сколько минут до конца закрывать вход, если у запуска "
+            "не задано своё (2880 — двое суток)",
         )
 
-    return timezone.now() + timedelta(days=days) <= season.finished_at
+    return timezone.now() + timedelta(minutes=minutes) <= season.finished_at
 
 
 def _no_season_json():

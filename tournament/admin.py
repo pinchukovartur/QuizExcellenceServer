@@ -32,11 +32,14 @@ class SeasonAdmin(admin.ModelAdmin):
 
     @admin.display(description="Вход")
     def join_window(self, season):
-        days = season.closed_before_end_days or 0
-        if days <= 0:
+        minutes = season.closed_before_end_minutes
+        if minutes is None:
+            return "по общей настройке"
+
+        if minutes <= 0:
             return "до конца"
 
-        closes = season.finished_at - timedelta(days=days)
+        closes = season.finished_at - timedelta(minutes=minutes)
         if closes <= timezone.now():
             return "закрыт"
 
