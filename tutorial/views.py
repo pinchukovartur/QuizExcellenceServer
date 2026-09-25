@@ -1,7 +1,7 @@
 import json
 
 from django.conf import settings
-from django.db.models import Count
+from django.db.models import F
 from django.http import HttpResponse, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
 
@@ -28,8 +28,12 @@ STEPS = (
 def save(request):
     """Отмечает пройденный шаг: POST на /tutorial_step/.
 
-    Клиент повторяет неудачные отправки, поэтому повторный вызов с тем
-    же шагом не ошибка и не дубль — get_or_create по паре (игрок, шаг).
+    Считаем игроков, а не храним каждого: отчёту нужно одно число на
+    шаг, а строка на пару «игрок и шаг» раздувала базу без предела.
+
+    От двойного счёта защищает клиент — он помнит отправленное и
+    второй раз не шлёт. Здесь повторов не отличить: игрока мы больше
+    не запоминаем, в этом и смысл.
 
     Отвечает явным «ok», чтобы клиент понял, можно ли снять шаг из
     очереди: молчаливый 200 неотличим от оборванного соединения.
@@ -44,10 +48,12 @@ def save(request):
         return HttpResponse(json.dumps({"error": "bad request"}),
                             status=400)
 
-    _, created = TutorialStep.objects.get_or_create(
-        game_state_id=game_state_id, step=step)
+    # F-выражение, а не чтение с записью: два запроса подряд иначе
+    # прочитали бы одно значение и один из них потерялся
+    TutorialStep.objects.get_or_create(step=step)
+    TutorialStep.objects.filter(step=step).update(players=F("players") + 1)
 
-    return HttpResponse(json.dumps({"ok": True, "created": created}))
+    return HttpResponse(json.dumps({"ok": True}))
 
 
 def funnel(request):
@@ -60,9 +66,7 @@ def funnel(request):
     if secret_key != settings.API_SECRET_KEY:
         return HttpResponseForbidden("forbidden")
 
-    counts = {r['step']: r['players'] for r in TutorialStep.objects
-              .values('step')
-              .annotate(players=Count('game_state_id', distinct=True))}
+    counts = dict(TutorialStep.objects.values_list('step', 'players'))
 
     started = counts.get(STEPS[0], 0)
     rows = []

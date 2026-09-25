@@ -2,33 +2,27 @@ from django.db import models
 
 
 class TutorialStep(models.Model):
-    """Пройденный шаг обучения.
+    """Счётчик игроков, дошедших до шага обучения.
 
-    Нужна, чтобы видеть, где новый игрок отваливается: первый шаг —
-    сам запуск игры, дальше шаги обучения по порядку. Разница между
-    соседними шагами и есть воронка первого сеанса.
+    Одна строка на шаг, а не на пару «игрок и шаг»: отчёт показывает
+    только число дошедших, а хранение каждого игрока раздувало базу —
+    девять строк на человека и рост без предела.
 
-    Одна строка на игрока и шаг: шаг проходится один раз, а повторная
-    отправка того же шага (клиент повторяет неудачные) не должна
-    плодить дубли — за это отвечает unique_together.
+    Двойного учёта не будет: клиент помнит отправленные шаги и второй
+    раз их не шлёт (см. ServerTutorialController). Совсем точным
+    счётчик от этого не становится — переустановка игры посчитает
+    игрока заново, — но воронку это не искажает: так ведут себя все
+    шаги одинаково.
     """
 
-    game_state_id = models.CharField(max_length=60, db_index=True)
+    #: Строковый id шага, а не число: он приходит с клиента как есть
+    #: (см. TutorialStepId в lib/state/tutorial_state.dart) и переживает
+    #: переименование значений в коде.
+    step = models.CharField(primary_key=True, max_length=40)
 
-    # Строковый id шага, а не число: он приходит с клиента как есть
-    # (см. TutorialStepId в lib/state/tutorial_state.dart) и переживает
-    # переименование значений в коде.
-    step = models.CharField(max_length=40, db_index=True)
+    players = models.IntegerField(default=0)
 
-    # Когда шаг пройден по времени сервера. Клиентскому времени
-    # доверять нельзя: часы на устройстве бывают сбиты.
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ('game_state_id', 'step')
-        # Имя задаём явно — см. feedback/models.py
-        indexes = [models.Index(fields=['step', 'created_at'],
-                                name='tutorial_tu_step_idx')]
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return '%s %s' % (self.game_state_id, self.step)
+        return '%s: %s' % (self.step, self.players)

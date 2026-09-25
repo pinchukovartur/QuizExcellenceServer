@@ -5,6 +5,12 @@ from tutorial.models import TutorialStep
 
 @admin.register(TutorialStep)
 class TutorialStepAdmin(admin.ModelAdmin):
-    list_display = ('game_state_id', 'step', 'created_at')
-    list_filter = ('step',)
-    search_fields = ('game_state_id',)
+    """Воронка обучения: сколько игроков дошло до каждого шага.
+
+    Строк ровно столько, сколько шагов. Игроков поимённо не храним:
+    отчёту нужно только число, а строка на каждого раздувала базу.
+    """
+
+    list_display = ('step', 'players', 'updated_at')
+    ordering = ('-players',)
+    readonly_fields = ('updated_at',)
