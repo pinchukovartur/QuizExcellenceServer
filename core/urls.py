@@ -18,6 +18,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.index, name="root"),
     path('index/', views.index, name="index"),
+    # Политика конфиденциальности: ссылку на неё требуют магазины
+    path('privacy/', views.privacy, name="privacy"),
 
     path('save/', prestige.views.save, name="save"),
     path('prestige/', prestige.views.get_leader_board, name="get_leader_board"),

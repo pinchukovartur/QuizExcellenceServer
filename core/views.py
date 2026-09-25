@@ -1,4 +1,5 @@
 from django.http import HttpResponse
+from django.shortcuts import render
 from django.utils import timezone
 
 from prestige.models import Prestige
@@ -29,3 +30,17 @@ def index(request):
         "new_today": created_today,
         "total": Prestige.objects.count(),
     }), content_type="application/json")
+
+
+def privacy(request):
+    """Политика конфиденциальности.
+
+    Нужна магазинам: и Google Play, и AppGallery требуют ссылку на
+    живую страницу, иначе приложение не отправить на проверку. Держим
+    её у себя, а не на стороннем хостинге: ссылка в карточке магазина
+    не должна протухнуть.
+    """
+    return render(request, "privacy.html", {
+        "updated": "25 сентября 2026 года",
+        "email": "artur.pinchukou@redbarkgames.com",
+    })
