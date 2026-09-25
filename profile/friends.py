@@ -11,13 +11,22 @@ from django.conf import settings
 from django.http import HttpResponse, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
 
+from config.models import get_int
 from prestige.models import Prestige
 from profile.models import Friendship, Profile
 from profile.views import _issue_code
 
-#: Сколько друзей можно держать. Ограничение не техническое: список
-#: сверх этого перестаёт быть списком друзей.
-MAX_FRIENDS = 100
+def max_friends():
+    """Сколько друзей можно держать.
+
+    Ограничение не техническое: список сверх этого перестаёт быть
+    списком друзей. Настройка, потому что разумный предел видно
+    только по тому, сколько их набирают на самом деле.
+    """
+    return get_int(
+        "friends.max_count", 100,
+        "Предел списка друзей у одного игрока",
+    )
 
 
 def _forbidden(request):
@@ -114,7 +123,7 @@ def add(request):
     if friend.state_id == owner.state_id:
         return HttpResponse(json.dumps({"ok": False, "self": True}))
 
-    if owner.friends.count() >= MAX_FRIENDS:
+    if owner.friends.count() >= max_friends():
         return HttpResponse(json.dumps({"ok": False, "full": True}))
 
     # Уже в друзьях — не ошибка: игрок мог нажать дважды
@@ -162,7 +171,7 @@ def friend_list(request):
     links = (Friendship.objects
              .filter(owner_id=owner_id)
              .select_related("friend")
-             .order_by("-created_at")[:MAX_FRIENDS])
+             .order_by("-created_at")[:max_friends()])
 
     items = [_card(link.friend) for link in links]
     # Сильнейшие сверху: список друзей читается как маленький рейтинг

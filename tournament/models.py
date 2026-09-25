@@ -32,8 +32,9 @@ class Season(models.Model):
     #: зависит от длины запуска: двухнедельному нужно два дня, а
     #: трёхдневному спринту хватит нескольких часов.
     #:
-    #: Ноль — вход открыт до самого конца.
-    closed_before_end_days = models.IntegerField(default=2)
+    #: Ноль — вход открыт до самого конца. Пусто — берём общую
+    #: настройку tournament.closed_before_end_days.
+    closed_before_end_days = models.IntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["-started_at"]

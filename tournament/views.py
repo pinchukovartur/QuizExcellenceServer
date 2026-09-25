@@ -8,20 +8,26 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
+from config.models import get_int
 from tournament.models import Member, Room, Season
 
-# Сколько игроков помещается в комнату
-ROOM_SIZE = 15
-
-# Сколько мест получают награду. Должно совпадать с клиентом
-# (TournamentController.prizes): расходятся — игрок увидит приз,
-# которого сервер не подтвердит.
+# Сколько мест получают награду. Не настройка: список призов зашит в
+# билд (TournamentController.prizes), и разойдись они — игрок увидит
+# приз, которого сервер не подтвердит.
 REWARDED_PLACES = 3
 
-# За сколько до конца закрываем вход по умолчанию. Запуск может
-# задать своё окно — см. Season.closed_before_end_days.
-DEFAULT_CLOSED_BEFORE_END_DAYS = 2
 
+def room_size():
+    """Сколько игроков помещается в комнату.
+
+    Настройка, а не константа: подходящий размер виден только по
+    метрикам, и менять его ради этого деплоем — лишнее. На уже
+    набранные комнаты не влияет, только на новые.
+    """
+    return get_int(
+        "tournament.room_size", 15,
+        "Сколько игроков в одной комнате турнира",
+    )
 
 def _forbidden(request):
     key = request.POST.get("secret_key") or request.GET.get("secret_key", "")
@@ -64,7 +70,11 @@ def _open_for_join(season):
     """
     days = season.closed_before_end_days
     if days is None:
-        days = DEFAULT_CLOSED_BEFORE_END_DAYS
+        days = get_int(
+            "tournament.closed_before_end_days", 2,
+            "За сколько дней до конца закрывать вход, если у запуска "
+            "не задано своё",
+        )
 
     return timezone.now() + timedelta(days=days) <= season.finished_at
 
@@ -95,7 +105,7 @@ def _season_json(season, room=None):
         "season_id": season.pk,
         "started_at": season.started_at.isoformat(),
         "finished_at": season.finished_at.isoformat(),
-        "room_size": ROOM_SIZE,
+        "room_size": room_size(),
     }
     if room is not None:
         data["room_id"] = room.pk
@@ -147,7 +157,7 @@ def join(request):
 
     for _ in range(3):
         room = (Room.objects
-                .filter(season=season, players_count__lt=ROOM_SIZE)
+                .filter(season=season, players_count__lt=room_size())
                 .order_by("-players_count", "pk")
                 .first())
         if room is None:
