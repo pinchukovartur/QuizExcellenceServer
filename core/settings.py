@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'feedback',
     'tournament',
     'purchase',
+    'profile',
 ]
 
 # Ключ сервисного аккаунта для проверки покупок в Google Play.

@@ -11,6 +11,7 @@ import feedback.views
 import metrics.views
 import tournament.views
 import purchase.views
+import profile.views
 
 from core import views
 
@@ -58,6 +59,10 @@ urlpatterns = [
     path('tournament_score/', tournament.views.add_score, name="tournament_score"),
     path('tournament_board/', tournament.views.board, name="tournament_board"),
     path('tournament_reward/', tournament.views.reward, name="tournament_reward"),
+
+    # Карточка игрока: её показывают рейтинг, турнир и друзья
+    path('profile_save/', profile.views.save, name="profile_save"),
+    path('profile_get/', profile.views.get, name="profile_get"),
 
     path('purchase_verify/', purchase.views.verify, name="purchase_verify"),
 ]
