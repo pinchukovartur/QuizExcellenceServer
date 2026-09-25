@@ -75,6 +75,10 @@ def _no_season_json():
 
 def _season_json(season, room=None):
     data = {
+        # Своё время: часы на устройстве переводятся, и клиент по ним
+        # решал бы, кончилось событие или нет. Заодно обратный отсчёт
+        # в окне перестаёт врать при сбитых часах.
+        "now": timezone.now().isoformat(),
         "season_id": season.pk,
         "started_at": season.started_at.isoformat(),
         "finished_at": season.finished_at.isoformat(),
