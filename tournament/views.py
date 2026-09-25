@@ -79,6 +79,11 @@ def _season_json(season, room=None):
         # решал бы, кончилось событие или нет. Заодно обратный отсчёт
         # в окне перестаёт врать при сбитых часах.
         "now": timezone.now().isoformat(),
+        # Название запуска: «Весенняя олимпиада», «Зимний кубок».
+        # Игра показывает его на кнопке события, поэтому переименовать
+        # турнир можно из админки, не пересобирая приложение. Пусто —
+        # игра подставит своё слово.
+        "title": season.title,
         "season_id": season.pk,
         "started_at": season.started_at.isoformat(),
         "finished_at": season.finished_at.isoformat(),
